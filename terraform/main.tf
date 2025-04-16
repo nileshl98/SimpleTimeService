@@ -7,100 +7,105 @@ module "vpc" {
   version = "5.1.2"
 
   name = "simpletimeservice-vpc"
-  cidr = "10.0.0.0/16"
+  cidr = var.vpc_cidr
 
   azs             = ["${var.aws_region}a", "${var.aws_region}b"]
-  public_subnets  = ["10.0.1.0/24", "10.0.2.0/24"]
-  private_subnets = ["10.0.3.0/24", "10.0.4.0/24"]
+  public_subnets  = var.public_subnets
+  private_subnets = var.private_subnets
 
   enable_nat_gateway   = true
   single_nat_gateway   = true
   enable_dns_hostnames = true
+
   tags = {
     Terraform = "true"
     Project   = "SimpleTimeService"
   }
 }
 
-module "ecs" {
-  source = "terraform-aws-modules/ecs/aws"
+module "eks" {
+  source          = "terraform-aws-modules/eks/aws"
+  version         = "20.35.0"
+  cluster_name    = var.cluster_name
+  cluster_version = "1.27"
+  subnet_ids      = module.vpc.private_subnets
+  vpc_id          = module.vpc.vpc_id
 
-  name               = "simpletimeservice"
-  container_insights = true
-  capacity_providers = ["FARGATE"]
+  enable_irsa = true
 
-  vpc_id                         = module.vpc.vpc_id
-  subnet_ids                    = module.vpc.private_subnets
-  create_task_exec_role         = true
-  create_task_role              = true
-  fargate_capacity_provider     = true
+  eks_managed_node_group_defaults = {
+    instance_types = ["t3.medium"]
+  }
 
-  ecs_services = {
-    simpletimeservice = {
-      desired_count = 1
-      launch_type   = "FARGATE"
+  eks_managed_node_groups = {
+    default = {
+      desired_capacity = 2
+      min_capacity     = 1
+      max_capacity     = 3
+    }
+  }
 
-      task_definition = {
-        family                   = "simpletimeservice"
-        container_definitions = jsonencode([{
-          name      = "simpletimeservice"
-          image     = var.container_image
-          essential = true
-          portMappings = [
-            {
-              containerPort = 8080
-              hostPort      = 8080
-            }
-          ]
-        }])
-        requires_compatibilities = ["FARGATE"]
-        network_mode             = "awsvpc"
-        cpu                      = "256"
-        memory                   = "512"
+  tags = {
+    Environment = "dev"
+    Terraform   = "true"
+  }
+}
+
+resource "kubernetes_deployment" "simpletimeservice" {
+  metadata {
+    name      = "simpletimeservice"
+    namespace = "default"
+    labels = {
+      app = "simpletimeservice"
+    }
+  }
+
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "simpletimeservice"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "simpletimeservice"
+        }
       }
 
-      load_balancer = {
-        target_group_arn = aws_lb_target_group.this.arn
-        container_name   = "simpletimeservice"
-        container_port   = 8080
+      spec {
+        container {
+          name  = "simpletimeservice"
+          image = var.container_image
+
+          port {
+            container_port = 8080
+          }
+        }
       }
     }
   }
 }
 
-resource "aws_lb" "this" {
-  name               = "simpletimeservice-alb"
-  internal           = false
-  load_balancer_type = "application"
-  subnets            = module.vpc.public_subnets
-
-  tags = {
-    Name = "simpletimeservice-alb"
+resource "kubernetes_service" "simpletimeservice" {
+  metadata {
+    name      = "simpletimeservice"
+    namespace = "default"
   }
-}
 
-resource "aws_lb_target_group" "this" {
-  name     = "simpletimeservice-tg"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
-  target_type = "ip"
-  health_check {
-    path                = "/"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 5
-    unhealthy_threshold = 2
-  }
-}
+  spec {
+    selector = {
+      app = "simpletimeservice"
+    }
 
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.this.arn
-  port              = 80
-  protocol          = "HTTP"
+    port {
+      port        = 80
+      target_port = 8080
+    }
 
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.this.arn
+    type = "LoadBalancer"
   }
 }
