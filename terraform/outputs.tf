@@ -6,6 +6,5 @@ output "eks_cluster_name" {
 output "eks_cluster_endpoint" {
   description = "EKS cluster endpoint"
   value       = module.eks.cluster_endpoint
-
-::contentReference[oaicite:0]{index=0}
+}
  
