@@ -1,5 +1,16 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.83.0"
+    }
+  }
+}
+
 provider "aws" {
-  region = var.aws_region
+  region     = var.aws_region
+  access_key = "AKIAZ3MGNADJJH6YHU"
+  secret_key = "lzu35aP3QamVI9BMt6o44tAbeewGCem4V"
 }
 
 module "vpc" {
