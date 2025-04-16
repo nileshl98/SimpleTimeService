@@ -1,6 +1,6 @@
 variable "aws_region" {
   description = "AWS region"
-  default     = "us-east-1"
+  default     = "ap-south-1"
 }
 
 variable "cluster_name" {
@@ -27,5 +27,5 @@ variable "private_subnets" {
 
 variable "container_image" {
   description = "Docker image for the application"
-  default     = "your_dockerhub_username/simpletimeservice:latest"
+  default     = "nilipane23/simpletimeservice:latest"
 }
