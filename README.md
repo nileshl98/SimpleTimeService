@@ -244,9 +244,3 @@ Then open the EXTERNAL-IP in your browser to get the JSON response:
   "ip": "<your-public-ip>"
 }
 ```
-
-## Notes
-- Ensure AWS credentials are configured via `aws configure` or environment variables.
-- Do NOT commit secrets to GitHub.
-- This setup uses public Terraform modules for VPC and EKS.
-```
