@@ -1,17 +1,14 @@
 FROM python:3.9-slim
 
+# Create non-root user
 RUN useradd -m appuser
 
-WORKDIR /home/appuser
+WORKDIR /home/appuser/app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
-
-RUN pip install flask
-
-RUN chown -R appuser:appuser /home/appuser
-
+COPY --chown=appuser:appuser . .
 USER appuser
 
-EXPOSE 8080
-
+EXPOSE 80
 CMD ["python", "main.py"]
