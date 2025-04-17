@@ -1,10 +1,8 @@
-output "eks_cluster_name" {
-  description = "EKS cluster name"
-  value       = module.eks.cluster_name
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
 }
 
-output "eks_cluster_endpoint" {
-  description = "EKS cluster endpoint"
-  value       = module.eks.cluster_endpoint
+output "kubeconfig" {
+  value = module.eks.kubeconfig
+  sensitive = true
 }
- 
