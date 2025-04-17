@@ -73,7 +73,7 @@ variable "private_subnets" {
 }
 
 variable "docker_image" {
-  default = "<your-dockerhub-username>/simpletimeservice:latest"
+  default = "nilipane23/simpletimeservice:latest"
 }
 ```
 
@@ -86,7 +86,7 @@ module "vpc" {
   name = "simpletimeservice-vpc"
   cidr = var.vpc_cidr
 
-  azs             = ["us-east-1a", "us-east-1b"]
+  azs             = ["ap-south-1a", "ap-south-1b"]
   public_subnets  = var.public_subnets
   private_subnets = var.private_subnets
 
@@ -123,98 +123,17 @@ output "cluster_endpoint" {
 }
 
 output "kubeconfig" {
-  value = module.eks.kubeconfig
+  value     = module.eks.kubeconfig
   sensitive = true
 }
 ```
 
 **8. terraform/terraform.tfvars**
 ```hcl
-aws_region = "us-east-1"
+aws_region = "ap-south-1"
 ```
 
-**9. README.md**
-```markdown
-# SimpleTimeService with AWS EKS Deployment
-
-## Purpose
-A minimalist Python Flask web service returning a timestamp and client IP address. Deployed on AWS EKS using Terraform.
-
-## Features
-- Returns current UTC timestamp and requester's IP
-- Dockerized with non-root user
-- AWS EKS deployment using Terraform
-
-## Project Structure
-```
-.
-├── app
-│   ├── main.py
-│   ├── requirements.txt
-│   └── Dockerfile
-├── terraform
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── terraform.tfvars
-│   └── provider.tf
-└── README.md
-```
-
-## Prerequisites
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-- [Terraform](https://developer.hashicorp.com/terraform/downloads)
-- [Docker](https://www.docker.com/products/docker-desktop/)
-- AWS account with appropriate IAM permissions
-
-## Steps
-
-### 1. Build & Push Docker Image
-```bash
-cd app
-docker build -t <your-dockerhub-username>/simpletimeservice:latest .
-docker push <your-dockerhub-username>/simpletimeservice:latest
-```
-
-### 2. Deploy Infrastructure with Terraform
-```bash
-cd terraform
-terraform init
-terraform apply -auto-approve
-```
-
-### 3. Configure kubectl
-```bash
-aws eks --region us-east-1 update-kubeconfig --name simpletimeservice-eks
-```
-
-### 4. Deploy App to EKS
-```bash
-kubectl apply -f https://raw.githubusercontent.com/<your-username>/<repo-name>/main/k8s/simpletimeservice-deployment.yaml
-```
-
-### 5. Access the Application
-Use the external LoadBalancer URL:
-```bash
-kubectl get svc -n default
-```
-Visit the external IP to see the JSON response:
-```json
-{
-  "timestamp": "2025-04-17 08:35:57 UTC",
-  "ip": "<your-public-ip>"
-}
-```
-
-## Notes
-- Ensure AWS credentials are configured via `aws configure` or environment variables.
-- Do NOT commit secrets to GitHub.
-- This setup uses public Terraform modules for VPC and EKS.
-```
-
-**10. Kubernetes Manifests (optional if included)**
-You can include a simple `k8s/simpletimeservice-deployment.yaml`:
+**9. k8s/simpletimeservice-deployment.yaml**
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -248,4 +167,86 @@ spec:
     - port: 80
       targetPort: 80
 ```
-Replace `<your-dockerhub-username>` and `<your-username>/<repo-name>` with actual values before committing to GitHub.
+
+**10. README.md**
+```markdown
+# SimpleTimeService with AWS EKS Deployment
+
+## Purpose
+A minimalist Python Flask web service returning a timestamp and client IP address. Deployed on AWS EKS using Terraform and exposed via LoadBalancer.
+
+## Features
+- Returns current UTC timestamp and requester's IP
+- Dockerized with non-root user
+- AWS EKS deployment using Terraform
+- LoadBalancer service to expose app to the internet
+
+## Project Structure
+```
+.
+├── app
+│   ├── main.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── terraform
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── terraform.tfvars
+│   └── provider.tf
+├── k8s
+│   └── simpletimeservice-deployment.yaml
+└── README.md
+```
+
+## Prerequisites
+- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+- [Terraform](https://developer.hashicorp.com/terraform/downloads)
+- [Docker](https://www.docker.com/products/docker-desktop/)
+- AWS account with appropriate IAM permissions
+
+## Steps
+
+### 1. Build & Push Docker Image
+```bash
+cd app
+docker build -t <your-dockerhub-username>/simpletimeservice:latest .
+docker push <your-dockerhub-username>/simpletimeservice:latest
+```
+
+### 2. Deploy Infrastructure with Terraform
+```bash
+cd terraform
+terraform init
+terraform apply -auto-approve
+```
+
+### 3. Configure kubectl
+```bash
+aws eks --region ap-south-1 update-kubeconfig --name simpletimeservice-eks
+```
+
+### 4. Deploy App to EKS
+```bash
+kubectl apply -f ../k8s/simpletimeservice-deployment.yaml
+```
+
+### 5. Access the Application
+Use the external LoadBalancer URL:
+```bash
+kubectl get svc simpletimeservice
+```
+Then open the EXTERNAL-IP in your browser to get the JSON response:
+```json
+{
+  "timestamp": "2025-04-17 08:35:57 UTC",
+  "ip": "<your-public-ip>"
+}
+```
+
+## Notes
+- Ensure AWS credentials are configured via `aws configure` or environment variables.
+- Do NOT commit secrets to GitHub.
+- This setup uses public Terraform modules for VPC and EKS.
+```
